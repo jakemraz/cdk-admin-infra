@@ -2,11 +2,25 @@ import * as cdk from '@aws-cdk/core';
 import * as iam from '@aws-cdk/aws-iam';
 
 export class UserStack extends cdk.Stack {
+
+  protected groupDeveloper: iam.Group;
+
   constructor(scope: cdk.Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
 
+    this.manageGroup();
+
+    const testgroup = new iam.Group(this, 'testgroup', {groupName:'testgroup'});
+    /**
+     * Add user here
+     * Never change initial password at cdk after adding user
+     */
+    //this.addUser('jakemraz', '#Asdf12345', this.groupDeveloper, anothergroup, ...);
+  }
+
+  protected manageGroup() {
     // DeveloperGroup
-    const devGroup = new iam.Group(this, 'Group-Developer', {
+    this.groupDeveloper = new iam.Group(this, 'Group-Developer', {
       groupName: 'Developer',
       managedPolicies: [
         iam.ManagedPolicy.fromManagedPolicyArn(this, 'PowerUserAccess', 'arn:aws:iam::aws:policy/PowerUserAccess'),
@@ -15,7 +29,7 @@ export class UserStack extends cdk.Stack {
     });
 
     // force mfc policy
-    const mfaPolicy = new iam.ManagedPolicy(this, 'Policy-MFAEnable', {
+    const policyMfa = new iam.ManagedPolicy(this, 'Policy-MFAEnable', {
       statements: [
         new iam.PolicyStatement({
           sid: 'AllowChangePassword',
@@ -132,13 +146,10 @@ export class UserStack extends cdk.Stack {
         })
       ]
     });
-    mfaPolicy.attachToGroup(devGroup);
-
-    this.addUser(devGroup, 'jakemraz', '#Asdf12345');    
-    
+    policyMfa.attachToGroup(this.groupDeveloper);
   }
 
-  protected addUser(group: iam.Group, userName: string, initialPassword: string) {
+  protected addUser(userName: string, initialPassword: string, ...groups: iam.Group[]) {
 
     if(!this.validPassword(initialPassword)) 
       throw new Error('password should have at least one uppercase letter, at least one number and at least one symbol');
@@ -148,9 +159,7 @@ export class UserStack extends cdk.Stack {
       userName: userName,
       password: password,
       passwordResetRequired: true,
-      groups: [
-        group
-      ],
+      groups: groups,
     });
 
     new cdk.CfnOutput(this, `${userName}-Password`, {
