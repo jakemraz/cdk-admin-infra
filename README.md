@@ -1,14 +1,20 @@
-# Welcome to your CDK TypeScript project!
+# CDK Admin Infra
+## Overview
+Admin Infra Management Framework powered by CDK
+it supports user management(UserStack), default config management(DefaultConfigStack), etc
 
-This is a blank project for TypeScript development with CDK.
+## Stacks
+### DefaultConfigStack
+This stack manages default configuration of the account.
+- `enableEbsEncryptionByDefault` enable EBS encryption by default
+- `tbd`
 
-The `cdk.json` file tells the CDK Toolkit how to execute your app.
+### UserStack
+This stack manages IAM users. You can add user with `addUser` method.
+```typescript
+this.addUser('userid', '#Asdf12345', this.groupDeveloper, anothergroup, ...);
+```
 
-## Useful commands
+## How to deploy
+* `cdk deploy`      deploy this stack to your default AWS account/region
 
- * `npm run build`   compile typescript to js
- * `npm run watch`   watch for changes and compile
- * `npm run test`    perform the jest unit tests
- * `cdk deploy`      deploy this stack to your default AWS account/region
- * `cdk diff`        compare deployed stack with current state
- * `cdk synth`       emits the synthesized CloudFormation template
