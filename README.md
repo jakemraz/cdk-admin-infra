@@ -11,6 +11,7 @@ This stack manages default configuration of the account.
 
 ### UserStack
 This stack manages IAM users. You can add user with `addUser` method.
+MUST NOT change the initial password at cdk after adding a user. It causes to change the password.
 ```typescript
 this.addUser('userid', '#Asdf12345', this.groupDeveloper, anothergroup, ...);
 ```
