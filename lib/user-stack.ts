@@ -14,18 +14,134 @@ export class UserStack extends cdk.Stack {
       ]
     });
 
-    
+    // force mfc policy
+    const mfaPolicy = new iam.ManagedPolicy(this, 'Policy-MFAEnable', {
+      statements: [
+        new iam.PolicyStatement({
+          sid: 'AllowChangePassword',
+          effect: iam.Effect.ALLOW,
+          actions: [ 'iam:ChangePassword' ],
+          resources: [ 'arn:aws:iam::*:user/${aws:username}' ]
+        }),
+        new iam.PolicyStatement({
+          sid: 'AllowGetAccountPasswordPolicy',
+          effect: iam.Effect.ALLOW,
+          actions: [ 'iam:GetAccountPasswordPolicy' ],
+          resources: [ '*' ]
+        }),
+        new iam.PolicyStatement({
+          sid: 'AllowViewAccountInfo',
+          effect: iam.Effect.ALLOW,
+          actions: [
+            'iam:GetAccountPasswordPolicy',
+            'iam:GetAccountSummary',
+            'iam:ListVirtualMFADevices'
+          ],
+          resources: [ '*' ]
+        }),
+        new iam.PolicyStatement({
+          sid: 'AllowManageOwnPasswords',
+          effect: iam.Effect.ALLOW,
+          actions: [ 'iam:ChangePassword', 'iam:GetUser' ],
+          resources: [ 'arn:aws:iam::*:user/${aws:username}' ]
+        }),
+        new iam.PolicyStatement({
+          sid: 'AllowManageOwnAccessKeys',
+          effect: iam.Effect.ALLOW,
+          actions: [
+            'iam:CreateAccessKey',
+            'iam:DeleteAccessKey',
+            'iam:ListAccessKeys',
+            'iam:UpdateAccessKey'
+          ],
+          resources: [ 'arn:aws:iam::*:user/${aws:username}' ]
+        }),
+        new iam.PolicyStatement({
+          sid: 'AllowManageOwnSigningCertificates',
+          effect: iam.Effect.ALLOW,
+          actions: [
+            'iam:DeleteSigningCertificate',
+            'iam:ListSigningCertificates',
+            'iam:UpdateSigningCertificate',
+            'iam:UploadSigningCertificate'
+          ],
+          resources: [ 'arn:aws:iam::*:user/${aws:username}' ]
+        }),
+        new iam.PolicyStatement({
+          sid: 'AllowManageOwnSSHPublicKeys',
+          effect: iam.Effect.ALLOW,
+          actions: [
+            'iam:DeleteSSHPublicKey',
+            'iam:GetSSHPublicKey',
+            'iam:ListSSHPublicKeys',
+            'iam:UpdateSSHPublicKey',
+            'iam:UploadSSHPublicKey'
+          ],
+          resources: [ 'arn:aws:iam::*:user/${aws:username}' ]
+        }),
+        new iam.PolicyStatement({
+          sid: 'AllowManageOwnGitCredentials',
+          effect: iam.Effect.ALLOW,
+          actions: [
+            'iam:CreateServiceSpecificCredential',
+            'iam:DeleteServiceSpecificCredential',
+            'iam:ListServiceSpecificCredentials',
+            'iam:ResetServiceSpecificCredential',
+            'iam:UpdateServiceSpecificCredential'
+          ],
+          resources: [ 'arn:aws:iam::*:user/${aws:username}' ]
+        }),
+        new iam.PolicyStatement({
+          sid: 'AllowManageOwnVirtualMFADevice',
+          effect: iam.Effect.ALLOW,
+          actions: [ 'iam:CreateVirtualMFADevice', 'iam:DeleteVirtualMFADevice' ],
+          resources: [ 'arn:aws:iam::*:mfa/${aws:username}' ]
+        }),
+        new iam.PolicyStatement({
+          sid: 'AllowManageOwnUserMFA',
+          effect: iam.Effect.ALLOW,
+          actions: [
+            'iam:DeactivateMFADevice',
+            'iam:EnableMFADevice',
+            'iam:ListMFADevices',
+            'iam:ResyncMFADevice'
+          ],
+          resources: [ 'arn:aws:iam::*:user/${aws:username}' ]
+        }),
+        new iam.PolicyStatement({
+          sid: 'DenyAllExceptListedIfNoMFA',
+          effect: iam.Effect.DENY,
+          notActions: [
+            'iam:CreateVirtualMFADevice',
+            'iam:DeleteVirtualMFADevice',
+            'iam:EnableMFADevice',
+            'iam:GetUser',
+            'iam:ListMFADevices',
+            'iam:ListVirtualMFADevices',
+            'iam:ResyncMFADevice',
+            'iam:ChangePassword',
+            'iam:GetAccountPasswordPolicy',
+            'sts:GetSessionToken'
+          ],
+          resources: [ '*' ],
+          conditions: {
+            'BoolIfExists': {
+              'aws:MultiFactorAuthPresent': 'false'
+            }
+          }
+        })
+      ]
+    });
+    mfaPolicy.attachToGroup(devGroup);
+
+    this.addUser(devGroup, 'jakemraz', '#Asdf12345');    
     
   }
 
-  protected addUser(userName: string, group: iam.Group) {
+  protected addUser(group: iam.Group, userName: string, initialPassword: string) {
 
-    let initialPassword = '';
-    while(!this.validPassword(initialPassword)) {
-      initialPassword = '#'+(Math.random()*0xFFFFFF<<0).toString(16)+(Math.random()*0xFFFFFF<<0).toString(16).toUpperCase();
-      console.log(initialPassword);
-    }
-    //const initialPassword = 'Password#3';
+    if(!this.validPassword(initialPassword)) 
+      throw new Error('password should have at least one uppercase letter, at least one number and at least one symbol');
     const password = cdk.SecretValue.plainText(initialPassword);
 
     const user = new iam.User(this, `User-${userName}`, {
@@ -37,10 +153,7 @@ export class UserStack extends cdk.Stack {
       ],
     });
 
-    new cdk.CfnOutput(this, `Output-Username-${userName}`, {
-      value: userName});
-
-    new cdk.CfnOutput(this, `Output-Password-${userName}`, {
+    new cdk.CfnOutput(this, `${userName}-Password`, {
       value: password.toString()});
 
   }
